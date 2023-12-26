@@ -1,0 +1,96 @@
+
+//+------------------------------------------------------------------+
+//|                                               Advanced Wakarimasu |
+//|                                 Developer: Forex Robot Easy Team |
+//|                                        Website: forexroboteasy.com |
+//+------------------------------------------------------------------+
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+#include <Indicators\RSI\RSI.mqh>
+#include <Indicators\ATR\ATR.mqh>
+
+// Define constants
+#define MAX_SYMBOLS 10
+#define EQUITY_STOP_PERCENTAGE 50
+#define TRADE_START_TIME 080000 // Trading starts at 08:00:00
+#define TRADE_END_TIME 160000 // Trading ends at 16:00:00
+
+// Define global variables
+CTrade trade;
+CRSI rsi;
+CATR atr;
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                    Expert Advisor Initialization                  |
+//|                                                                  |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   // Initialize RSI and ATR indicators
+   rsi.Create();
+   atr.Create();
+
+   // Set up trade parameters
+   trade.SetExpertMagicNumber(123456); // Set magic number for trade identification
+   trade.SetDeviationInPoints(5); // Set deviation for trade execution
+
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                      Expert Advisor Execution                      |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   // Check if it's time to start trading
+   if (TimeCurrent() < TRADE_START_TIME || TimeCurrent() > TRADE_END_TIME)
+      return; // Exit if it's not trading time
+
+   // Loop through the target currency pairs
+   for (int i = 0; i < MAX_SYMBOLS; i++)
+   {
+      // Select the currency pair
+      string symbol = SymbolSelect(i);
+
+      // Calculate RSI and ATR values
+      double rsiValue = rsi.iRSI(symbol, PERIOD_M15, 14, PRICE_CLOSE, 0);
+      double atrValue = atr.iATR(symbol, PERIOD_M15, 14, 0);
+
+      // Check for trade conditions
+      if (rsiValue > 70 && atrValue > 0.001)
+      {
+         // Open a sell trade
+         trade.Sell(symbol, 0.1, NormalizeDouble(Bid, _Digits), 0, 0, NormalizeDouble(Bid - (atrValue * 1.5), _Digits), NormalizeDouble(Bid + (atrValue * 1.5), _Digits), 'Advanced Wakarimasu');
+
+         // Set equity stop level
+         double equityStopLevel = AccountEquity() * (1 - (EQUITY_STOP_PERCENTAGE / 100));
+         trade.SetStopLoss(equityStopLevel);
+      }
+      else if (rsiValue < 30 && atrValue > 0.001)
+      {
+         // Open a buy trade
+         trade.Buy(symbol, 0.1, NormalizeDouble(Ask, _Digits), 0, 0, NormalizeDouble(Ask + (atrValue * 1.5), _Digits), NormalizeDouble(Ask - (atrValue * 1.5), _Digits), 'Advanced Wakarimasu');
+
+         // Set equity stop level
+         double equityStopLevel = AccountEquity() * (1 - (EQUITY_STOP_PERCENTAGE / 100));
+         trade.SetStopLoss(equityStopLevel);
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//|                          Expert Advisor Deinitialization           |
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   // Deinitialize indicators
+   rsi.Destroy();
+   atr.Destroy();
+   return;
+}
